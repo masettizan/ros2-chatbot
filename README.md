@@ -14,6 +14,7 @@ $ sudo apt install portaudio19-dev
 $ cd chatbot
 $ pip3 install -r audio_common/requirements.txt
 $ pip3 install -r speech_to_text/requirements.txt
+$ pip3 install -r tts_ros/requirements.txt
 $ python3 ./nltk_download.py
 
 # colcon
@@ -46,4 +47,5 @@ The default launch configuration for the chatbot uses openai, but it also suppor
 ## Contained Repositories
 Edited the following repositories for this chatbot:
 - https://github.com/MERLIN2-ARCH/speech_to_text
+- https://github.com/mgonzs13/tts_ros
 - https://github.com/mgonzs13/audio_common
