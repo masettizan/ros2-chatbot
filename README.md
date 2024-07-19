@@ -24,7 +24,7 @@ $ colcon build
 ```
 
 ## Running
-To run, write each command in different terminals after sourcing the workspace. 
+To run, write each command sequentially in different terminals after sourcing the workspace in each one. Do not build and source in the same terminal.  
 
 ```shell
 $ ros2 launch speech_to_text speech_to_text.launch.py
