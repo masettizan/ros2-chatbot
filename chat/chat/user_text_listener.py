@@ -24,7 +24,15 @@ class UserTextListener(Node):
         self.subscription
 
         self.publisher_ = self.create_publisher(String, 'text_output', 10)
-        self.usedAI = "anthropic" # can change to "openai"
+
+        # parameters
+        usedAI_param = "usedAI"
+
+        self.declare_parameter(usedAI_param, "openai") # can be "anthropic" or "openai"
+
+        self.usedAI = self.get_parameter(
+            usedAI_param).get_parameter_value().string_value
+        self.get_logger().info("Using AI " + self.usedAI + ".")
 
         print("Listening...")
         self._action_client = ActionClient(self, TTS, '/say')

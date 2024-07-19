@@ -9,13 +9,6 @@ class UserTextPublisher(Node):
         def __init__(self):
                 super().__init__('user_text_publisher')
                 self.publisher_ = self.create_publisher(String, 'text_input', 10)
-                # while True:
-                #       userText = input("Type your message here: ")
-                #       self.textCallback(userText)
-#               print("made it before timer", flush=True)
-#               userText = input("Type your message here: ")
-#               print("made it after user input", flush=True)
-#               self.textCallback(userText)
                 self.timer = self.create_timer(1.0, self.timer_callback)
 
         def timer_callback(self):

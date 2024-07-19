@@ -2,6 +2,7 @@ from launch import LaunchDescription
 from launch_ros.actions import Node
 
 def generate_launch_description():
+
     return LaunchDescription([
         Node(
             package='chat',
@@ -15,6 +16,7 @@ def generate_launch_description():
             namespace='chatbot',
             executable='listener',
             name='chat_listener',
-            output='screen'
+            output='screen',
+            parameters=[{"usedAI": "openai"}] # can be "anthropic" or "openai"
         )
     ])
