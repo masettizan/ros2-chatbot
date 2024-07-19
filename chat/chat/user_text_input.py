@@ -4,6 +4,9 @@ import sys
 
 from std_msgs.msg import String
 
+''' 
+A user text publisher node for terminal text input rather than diction.
+'''
 class UserTextPublisher(Node):
 
         def __init__(self):

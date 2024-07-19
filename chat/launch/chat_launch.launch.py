@@ -3,6 +3,7 @@ from launch_ros.actions import Node
 
 def generate_launch_description():
 
+    # a launcher for the chatbot's input and output
     return LaunchDescription([
         Node(
             package='chat',

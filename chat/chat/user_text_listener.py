@@ -12,8 +12,16 @@ import os
 
 from std_msgs.msg import String
 
+'''
+Node responsible for processing text received from either direct user input or user diction
+from the text_input topic, sending a request for TTS to begin, finding a response from the
+AI's API, and publishing the response for the diction node to determine how long to wait before 
+taking in more user input.
+'''
 class UserTextListener(Node):
 
+    # initializes subscription to text_input topic, publisher to text_output, parameters, and 
+    # the action client for TTS
     def __init__(self):
         super().__init__('user_text_listener')
         self.subscription = self.create_subscription(
@@ -39,6 +47,7 @@ class UserTextListener(Node):
         # /say is the action that we're using within the TTS action in audio_common_msgs
         self.personality = "Reply to everything with a funny tone. You should be making unnecessary jokes. These jokes can be questions, sarcastic comments, etc."
 
+    # sends goal to the TTS action server with the message to say
     def send_goal(self, text):
         goal_msg = TTS.Goal()
         goal_msg.text = text # from TTS.action file
@@ -55,6 +64,7 @@ class UserTextListener(Node):
         except Exception as e:
             self.get_logger().error(f"Failed to connect to action server: {str(e)}")
 
+    # produces a response from the API
     def produceResponse(self, query):
 
         #API Key and URL handling
@@ -74,12 +84,14 @@ class UserTextListener(Node):
         retry_delay = 1
         logging.basicConfig(level=logging.INFO)
 
+        # sends up to five api requests in the case that the rate limit is reached
         for attempt in range(max_retries):
             try:
                 logging.info(f"Making API request attempt {attempt + 1}")
                 logging.info(f"Query: {query}")
                 response_data = None
 
+                # handles the different cases of using either anthropic or openai
                 if self.usedAI == "anthropic":
                     client = anthropic.Anthropic(
                         api_key = API_KEY,
@@ -126,8 +138,8 @@ class UserTextListener(Node):
                 else:
                     return("Could not process input. Please try again later.")
 
+    # produces the chatbot's response to a query and sends it to be spoken by TTS
     def listener_callback(self, msg):
-        # self.get_logger().info('User said: "%s"' % msg.data)
         chat_bot_response = self.produceResponse(msg.data)
         self.get_logger().info('[USER]: "%s"' % msg.data)
 
