@@ -15,7 +15,10 @@ $ cd chatbot
 $ pip3 install -r audio_common/requirements.txt
 $ pip3 install -r speech_to_text/requirements.txt
 $ pip3 install -r tts_ros/requirements.txt
+
+$ cd ~/ros2_ws/src/chatbot/speech_to_text
 $ python3 ./nltk_download.py
+$ git clone https://github.com/uleroboticsgroup/simple_node.git
 
 # colcon
 $ cd ~/ros2_ws
