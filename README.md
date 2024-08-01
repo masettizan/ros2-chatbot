@@ -11,12 +11,12 @@ $ git clone https://github.com/emilytaylor6/chatbot.git
 # dependencies
 $ sudo apt-get install -y python-dev libportaudio2 libportaudiocpp0 portaudio19-dev libasound-dev swig
 $ sudo apt install portaudio19-dev
+$ pip install openai
+$ pip install anthropic
 $ cd chatbot
 $ pip3 install -r audio_common/requirements.txt
 $ pip3 install -r speech_to_text/requirements.txt
 $ pip3 install -r tts_ros/requirements.txt
-$ pip install openai
-$ pip install anthropic
 
 $ cd ~/ros2_ws/src/chatbot/speech_to_text
 $ python3 ./nltk_download.py
