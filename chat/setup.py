@@ -27,6 +27,7 @@ setup(
 		'talker = chat.user_text_input:main',
 		'listener = chat.user_text_listener:main',
 		'diction = chat.user_diction:main',
+        'openai_chatbot = chat.openai_chatbot:main',
         ],
     },
 )
