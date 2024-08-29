@@ -4,7 +4,6 @@ from rclpy.action import ActionClient
 from audio_common_msgs.action import TTS
 import requests
 import openai
-from openai.error import RateLimitError
 import time
 import logging
 import anthropic
@@ -130,7 +129,7 @@ class UserTextListener(Node):
                     logging.info(f"Received API response: {response_data}")
 
                 return response_data.replace("'", "")
-            except RateLimitError:
+            except openai.RateLimitError:
                 if attempt < max_retries - 1:
                     print(f"Rate limit exceeded. Retrying in {retry_delay} seconds...")
                     time.sleep(retry_delay)
