@@ -16,7 +16,7 @@ class OpenAIChatbot(Node):
 
     def __init__(self):
         super().__init__('chatbot')
-        openai.api_key='sk-None-dZRw5QSlKS3jtDOvGrQkT3BlbkFJAKs61lQB11YEhVUkrXeL'
+        openai.api_key=os.getenv("OPENAI") #get api key as enviormental variable
 
         # speaker options are alloy, echo, fable, onyx, nova, and shimmer
         self.speaker = "alloy"
@@ -31,7 +31,8 @@ class OpenAIChatbot(Node):
 
         # converting response to speech that is played
         response_audio = self.text_to_speech(generated_response)
-        self.goal_location = ''
+        self.goal_location = 'unknown'
+        self.conversation_history = ["The conversation history with this user are as follows:"]
 
     def rms(self, audio_segment):
         return audio_segment.rms
@@ -146,11 +147,13 @@ class OpenAIChatbot(Node):
             model="gpt-3.5-turbo",
             messages=[
                 {"role": "system", "content": personality},
-                {"role": "user", "content": query}
+                {"role": "user", "content": query},
+                {"role": "assistant", "content": self.conversation_history.join(" ")} # added needs to be tested
             ],
         )
         response_data = response.choices[0].message.content
         print("AI Response: ", response_data)
+        self.conversation_history.append(query) #TODO: TEST: added to keep previous info, does this fuck up the naming thing?
 
         return response_data.replace("'", "")
 
@@ -188,6 +191,42 @@ class OpenAIChatbot(Node):
 
     def get_goal_location(self):
         return self.goal_location
+    
+    def chatty_when_driving(self):
+        #calibrate audio input
+        background_noise_dbfs = self.measure_background_noise()
+        silence_threshold = background_noise_dbfs - 2 # 3 worked decently; 2 has a higher chance of picking up random things
+        print(f"Silence threshold: {silence_threshold}")
+
+        personality = '''
+                you are a chatty guide robot, you can guide people around the room '120', 
+                you are currently guiding someone to a location in the room. Talk about the 
+                work drama between yourself, and the other robots in the room, marlo and linden.
+            ''' 
+        # generating a response with openai
+        generated_response = self.generate_text(personality) #does having '' break it?
+
+        # converting response to speech that is played
+        response_audio = self.text_to_speech(generated_response)
+
+    def generate_text(self, personality):
+        
+        response = openai.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": personality},
+                {"role": "assistant", "content": self.conversation_history.join(" ")}, # added needs to be tested
+                {"role": "assistant", "content": "Marlo and linden are robots in the same body who don't get along and work at Emily's desk in room 120"}
+
+            ],
+        )
+        response_data = response.choices[0].message.content
+        print("AI Response: ", response_data)
+        self.conversation_history.append(response_data) #TODO: TEST: added to keep previous info, does this fuck up the naming thing?
+
+        return response_data.replace("'", "")
+       
+
 
     def main(self):
         # calibrating the audio input
@@ -197,7 +236,7 @@ class OpenAIChatbot(Node):
         silence_threshold = background_noise_dbfs - 2 # 3 worked decently; 2 has a higher chance of picking up random things
         print(f"Silence threshold: {silence_threshold}")
 
-        while True:
+        while self.goal_location == 'unknown': # changed from true to try to make it end when starting navigation
             # recording audio from microphone until a pause is detected
             audio_file = self.record_audio(threshold=silence_threshold)
 
@@ -219,7 +258,7 @@ class OpenAIChatbot(Node):
                 you are a guide robot, you can guide people around the room '120', 
                 and bring them to 1 of 8 locations:
                 120a, 120b, 120c, 120d, Drake Desk, Emily Desk, Percy Desk, Demo Table
-                Where does the user want to be guided to, respond with the name of the location only
+                Where does the user want to be guided to, respond with the name of the location only, if unclear respond with unknown
             ''' 
             generated_response = self.generate_response(query, personality)
             self.goal_location = generated_response
