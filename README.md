@@ -32,19 +32,19 @@ $ colcon build
 To run, write each command sequentially in different terminals after sourcing the workspace in each one. Do not build and source in the same terminal.  
 
 ```shell
-$ ros2 launch speech_to_text speech_to_text.launch.py
+ros2 launch speech_to_text speech_to_text.launch.py
 ```
 
 ```shell
-$ ros2 run audio_common tts_node
+ros2 run audio_common tts_node
 ```
 
 ```shell
-$ ros2 run audio_common audio_player_node
+ros2 run audio_common audio_player_node
 ```
 
 ```shell
-$ ros2 launch chat chat_launch.launch.py
+ros2 run chat openai_chatbot
 ```
 
 The default launch configuration for the chatbot uses openai, but it also supports anthropic within its parameters.
