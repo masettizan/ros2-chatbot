@@ -16,23 +16,13 @@ class OpenAIChatbot(Node):
 
     def __init__(self):
         super().__init__('chatbot')
-        openai.api_key=os.getenv("OPENAI") #get api key as enviormental variable
+        openai.api_key= os.getenv("OPENAI_API_KEY") #get api key as enviormental variable
 
         # speaker options are alloy, echo, fable, onyx, nova, and shimmer
         self.speaker = "alloy"
-
-        personality = '''
-                you are a guide robot, you can guide people around the room '120', 
-                and bring them to 1 of 8 locations:
-                120a, 120b, 120c, 120d, Drake's Desk, Emily's Desk, Percy's Desk, Demo Table
-            ''' 
-        # generating a response with openai
-        generated_response = self.generate_response("introduce yourself", personality)
-
-        # converting response to speech that is played
-        response_audio = self.text_to_speech(generated_response)
-        self.goal_location = 'unknown'
         self.conversation_history = ["The conversation history with this user are as follows:"]
+  
+        self.goal_location = 'unknown'
 
     def rms(self, audio_segment):
         return audio_segment.rms
@@ -148,12 +138,11 @@ class OpenAIChatbot(Node):
             messages=[
                 {"role": "system", "content": personality},
                 {"role": "user", "content": query},
-                {"role": "assistant", "content": self.conversation_history.join(" ")} # added needs to be tested
+                # {"role": "assistant", "content": (' ').join(conversation_history)} # added needs to be tested
             ],
         )
         response_data = response.choices[0].message.content
         print("AI Response: ", response_data)
-        self.conversation_history.append(query) #TODO: TEST: added to keep previous info, does this fuck up the naming thing?
 
         return response_data.replace("'", "")
 
@@ -199,12 +188,12 @@ class OpenAIChatbot(Node):
         print(f"Silence threshold: {silence_threshold}")
 
         personality = '''
-                you are a chatty guide robot, you can guide people around the room '120', 
-                you are currently guiding someone to a location in the room. Talk about the 
-                work drama between yourself, and the other robots in the room, marlo and linden.
+                you are a guide robot, you can guide people around the room '120', 
+                you are currently guiding someone to a location in the room. Talk about your day and your thoughts on work breifly, talk in shorter sentences.
             ''' 
         # generating a response with openai
         generated_response = self.generate_text(personality) #does having '' break it?
+        self.conversation_history.append(generated_response) #TODO: TEST: added to keep previous info, does this fuck up the naming thing?
 
         # converting response to speech that is played
         response_audio = self.text_to_speech(generated_response)
@@ -215,14 +204,15 @@ class OpenAIChatbot(Node):
             model="gpt-3.5-turbo",
             messages=[
                 {"role": "system", "content": personality},
-                {"role": "assistant", "content": self.conversation_history.join(" ")}, # added needs to be tested
-                {"role": "assistant", "content": "Marlo and linden are robots in the same body who don't get along and work at Emily's desk in room 120"}
+                # {"role": "assistant", "content": (' ').join(conversation_history)}, # added needs to be tested
+                {"role": "assistant", "content": 
+                 '''Marlo and linden are robots who work at Emily's desk in room 120 aswell.
+                 They work on a research project for emily although you aren't quite sure what it is.'''}
 
             ],
         )
         response_data = response.choices[0].message.content
         print("AI Response: ", response_data)
-        self.conversation_history.append(response_data) #TODO: TEST: added to keep previous info, does this fuck up the naming thing?
 
         return response_data.replace("'", "")
        
@@ -236,7 +226,19 @@ class OpenAIChatbot(Node):
         silence_threshold = background_noise_dbfs - 2 # 3 worked decently; 2 has a higher chance of picking up random things
         print(f"Silence threshold: {silence_threshold}")
 
-        while self.goal_location == 'unknown': # changed from true to try to make it end when starting navigation
+        personality = '''
+                you are a guide robot, you can guide people around the room '120', 
+                and bring them to 1 of 8 locations:
+                120a, 120b, 120c, 120d, Drake's Desk, Emily's Desk, Percy's Desk, Demo Table
+            ''' 
+
+        # generating a response with openai
+        generated_response = self.generate_response("introduce yourself", personality)
+
+        # converting response to speech that is played
+        response_audio = self.text_to_speech(generated_response)
+
+        while self.goal_location.lower() == 'unknown': # changed from true to try to make it end when starting navigation
             # recording audio from microphone until a pause is detected
             audio_file = self.record_audio(threshold=silence_threshold)
 
@@ -244,12 +246,15 @@ class OpenAIChatbot(Node):
             query = self.speech_to_text(audio_file)
 
             personality = '''
-                you are a friendly and chatty guide robot, you can guide people around the room '120', 
-                and bring them to 1 of 8 locations:
+                you are a guide robot, only take english input and only respond in english , 
+                you can guide people around the room '120' and bring them to 1 of 8 locations:
                 120a, 120b, 120c, 120d, Drake's Desk, Emily's Desk, Percy's Desk, Demo Table
+
             ''' 
             # generating a response with openai
             generated_response = self.generate_response(query, personality)
+            self.conversation_history.append(query) #TODO: TEST: added to keep previous info, does this fuck up the naming thing?
+
 
             # converting response to speech that is played
             response_audio = self.text_to_speech(generated_response)
