@@ -19,10 +19,14 @@ class OpenAIChatbot(Node):
         openai.api_key= os.getenv("OPENAI_API_KEY") #get api key as enviormental variable
 
         # speaker options are alloy, echo, fable, onyx, nova, and shimmer
-        self.speaker = "alloy"
-        self.conversation_history = ["The conversation history with this user are as follows:"]
-  
+        self.speaker = "alloy"  
         self.goal_location = 'unknown'
+
+        self.guidebot_personality = '''
+            You are a guide robot, only take english input and only respond in english, 
+            you can guide people around the room '120' and bring them to 1 of 8 locations:
+            120a, 120b, Door 1, Door 2, Drake's Desk, Emily's Desk, Percy's Desk, Demo Table. 
+        ''' 
 
     def rms(self, audio_segment):
         return audio_segment.rms
@@ -58,12 +62,6 @@ class OpenAIChatbot(Node):
 
     def detect_audio_silence(self, audio_segment : AudioSegment, pause_duration, threshold):
         min_silence_len = 1000*pause_duration
-
-        # return silence.detect_silence(
-        #     audio_segment,
-        #     min_silence_len=min_silence_len,
-        #     silence_thresh=threshold
-        # )
     
         samples = np.array(audio_segment.get_array_of_samples())
         rms_value = np.sqrt(np.mean(np.square(samples)))
@@ -138,7 +136,6 @@ class OpenAIChatbot(Node):
             messages=[
                 {"role": "system", "content": personality},
                 {"role": "user", "content": query},
-                # {"role": "assistant", "content": (' ').join(conversation_history)} # added needs to be tested
             ],
         )
         response_data = response.choices[0].message.content
@@ -147,17 +144,6 @@ class OpenAIChatbot(Node):
         return response_data.replace("'", "")
 
     def text_to_speech(self, text):
-        # response = openai.audio.speech.create(
-        #     model='tts-1',
-        #     voice='alloy',
-        #     input=text
-        # )
-
-        # with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as temp_audio_file:
-        #     # temp_audio_file.write(response)
-        #     print("Created speech file.")
-        #     return temp_audio_file.name
-
         player_stream = pyaudio.PyAudio().open(format=pyaudio.paInt16, channels=1, rate=24000, output=True) 
 
         start_time = time.time() 
@@ -181,30 +167,39 @@ class OpenAIChatbot(Node):
     def get_goal_location(self):
         return self.goal_location
     
-    def chatty_when_driving(self):
+    def robot_introduction(self):
+        # generating a response with openai
+        generated_response = self.generate_response(
+                "introduce yourself in one sentence then finish with asking where they want to go", 
+                self.guidebot_personality
+            )
+
+        # converting response to speech that is played
+        response_audio = self.text_to_speech(generated_response)
+
+    
+    def chatty_when_driving(self, location):
         #calibrate audio input
         background_noise_dbfs = self.measure_background_noise()
         silence_threshold = background_noise_dbfs - 2 # 3 worked decently; 2 has a higher chance of picking up random things
         print(f"Silence threshold: {silence_threshold}")
 
-        personality = '''
+        personality = f'''
                 you are a guide robot, you can guide people around the room '120', 
-                you are currently guiding someone to a location in the room. Talk about your day and your thoughts on work breifly, talk in shorter sentences.
+                you are currently guiding someone to {location} in the room. 
+                Talk about your day and your thoughts on work breifly, talk in shorter sentences, and a maximim of 3 sentences.
             ''' 
         # generating a response with openai
         generated_response = self.generate_text(personality) #does having '' break it?
-        self.conversation_history.append(generated_response) #TODO: TEST: added to keep previous info, does this fuck up the naming thing?
 
         # converting response to speech that is played
         response_audio = self.text_to_speech(generated_response)
 
     def generate_text(self, personality):
-        
         response = openai.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
                 {"role": "system", "content": personality},
-                # {"role": "assistant", "content": (' ').join(conversation_history)}, # added needs to be tested
                 {"role": "assistant", "content": 
                  '''Marlo and linden are robots who work at Emily's desk in room 120 aswell.
                  They work on a research project for emily although you aren't quite sure what it is.'''}
@@ -216,27 +211,43 @@ class OpenAIChatbot(Node):
 
         return response_data.replace("'", "")
        
+    def success_script(self):
+        generated_response = self.generate_response(f"you've successfully reached the goal position {self.goal_location}", self.guidebot_personality)
+        # converting response to speech that is played
+        response_audio = self.text_to_speech(generated_response)
 
+    def fail_script(self):
+        generated_response = self.generate_response(f"you've have failed to reach the goal position, {self.goal_location}", self.guidebot_personality)
+        # converting response to speech that is played
+        response_audio = self.text_to_speech(generated_response)
 
-    def main(self):
-        # calibrating the audio input
-        # background_noise_rms = measure_background_noise()
-        # silence_threshold = background_noise_rms - 10 
-        background_noise_dbfs = self.measure_background_noise()
-        silence_threshold = background_noise_dbfs - 2 # 3 worked decently; 2 has a higher chance of picking up random things
-        print(f"Silence threshold: {silence_threshold}")
+    def cancel_script(self):
+        generated_response = self.generate_response(f"the goal to {self.goal_location} has been canceled", self.guidebot_personality)
+        # converting response to speech that is played
+        response_audio = self.text_to_speech(generated_response)
 
-        personality = '''
-                you are a guide robot, you can guide people around the room '120', 
-                and bring them to 1 of 8 locations:
-                120a, 120b, 120c, 120d, Drake's Desk, Emily's Desk, Percy's Desk, Demo Table
-            ''' 
-
+    def reset(self):
+        self.goal_location = 'unknown'
         # generating a response with openai
-        generated_response = self.generate_response("introduce yourself", personality)
+        generated_response = self.generate_response("ask the user for where else they would like to be guided to", self.guidebot_personality)
 
         # converting response to speech that is played
         response_audio = self.text_to_speech(generated_response)
+        main(continued=True)
+
+
+    def main(self, continued = False):
+        
+        if continued == False:
+            # calibrating the audio input
+            # background_noise_rms = measure_background_noise()
+            # silence_threshold = background_noise_rms - 10 
+            background_noise_dbfs = self.measure_background_noise()
+            silence_threshold = background_noise_dbfs - 2 # 3 worked decently; 2 has a higher chance of picking up random things
+            print(f"Silence threshold: {silence_threshold}")
+
+            self.robot_introduction()
+            self.goal_location = 'unknown'
 
         while self.goal_location.lower() == 'unknown': # changed from true to try to make it end when starting navigation
             # recording audio from microphone until a pause is detected
@@ -245,27 +256,17 @@ class OpenAIChatbot(Node):
             # converting speech to text
             query = self.speech_to_text(audio_file)
 
-            personality = '''
-                you are a guide robot, only take english input and only respond in english , 
-                you can guide people around the room '120' and bring them to 1 of 8 locations:
-                120a, 120b, 120c, 120d, Drake's Desk, Emily's Desk, Percy's Desk, Demo Table
-
-            ''' 
             # generating a response with openai
-            generated_response = self.generate_response(query, personality)
-            self.conversation_history.append(query) #TODO: TEST: added to keep previous info, does this fuck up the naming thing?
-
+            generated_response = self.generate_response(query, self.guidebot_personality)
 
             # converting response to speech that is played
             response_audio = self.text_to_speech(generated_response)
 
-            personality = '''
-                you are a guide robot, you can guide people around the room '120', 
-                and bring them to 1 of 8 locations:
-                120a, 120b, 120c, 120d, Drake Desk, Emily Desk, Percy Desk, Demo Table
-                Where does the user want to be guided to, respond with the name of the location only, if unclear respond with unknown
+            instructions = '''
+                Where does the user want to be guided to, respond with the name of the location only, 
+                if unclear respond with unknown
             ''' 
-            generated_response = self.generate_response(query, personality)
+            generated_response = self.generate_response(query, self.guidebot_personality + instructions)
             self.goal_location = generated_response
             # playing the audio of response
             #play_audio(response_audio)
