@@ -184,11 +184,10 @@ class OpenAIChatbot(Node):
         silence_threshold = background_noise_dbfs - 2 # 3 worked decently; 2 has a higher chance of picking up random things
         print(f"Silence threshold: {silence_threshold}")
 
-        personality = f'''
-                you are a guide robot, you can guide people around the room '120', 
-                you are currently guiding someone to {location} in the room. 
-                Talk about your day and your thoughts on work breifly, talk in shorter sentences, and a maximim of 3 sentences.
-            ''' 
+        personality = f''' you are a guide robot, you can guide people around the room '120', 
+                    you are currently guiding someone to {location} in the room. 
+                    Talk about your day and your thoughts on work breifly, talk in shorter sentences, and a maximim of 3 sentences.
+                ''' 
         # generating a response with openai
         generated_response = self.generate_text(personality) #does having '' break it?
 
@@ -212,29 +211,45 @@ class OpenAIChatbot(Node):
         return response_data.replace("'", "")
        
     def success_script(self):
-        generated_response = self.generate_response(f"you've successfully reached the goal position {self.goal_location}", self.guidebot_personality)
+        generated_response = self.generate_response(
+            f"you've successfully reached the goal position {self.goal_location}", 
+            self.guidebot_personality
+        )
         # converting response to speech that is played
         response_audio = self.text_to_speech(generated_response)
 
     def fail_script(self):
-        generated_response = self.generate_response(f"you've have failed to reach the goal position, {self.goal_location}", self.guidebot_personality)
+        generated_response = self.generate_response(
+            f"you've have failed to reach the goal position, {self.goal_location}", 
+            self.guidebot_personality
+        )
         # converting response to speech that is played
         response_audio = self.text_to_speech(generated_response)
 
     def cancel_script(self):
-        generated_response = self.generate_response(f"the goal to {self.goal_location} has been canceled", self.guidebot_personality)
+        generated_response = self.generate_response(
+            f"the goal to {self.goal_location} has been canceled", 
+            self.guidebot_personality
+        )
+        
         # converting response to speech that is played
         response_audio = self.text_to_speech(generated_response)
 
     def reset(self):
         self.goal_location = 'unknown'
         # generating a response with openai
-        generated_response = self.generate_response("ask the user for where else they would like to be guided to", self.guidebot_personality)
+        generated_response = self.generate_response(
+            "ask the user for where else they would like to be guided to or if they would like to quit", 
+            self.guidebot_personality
+        )
 
         # converting response to speech that is played
         response_audio = self.text_to_speech(generated_response)
         main(continued=True)
 
+    def quit(self):
+        response_audio = self.text_to_speech("ok, see you later!")
+        rclpy.shutdown()
 
     def main(self, continued = False):
         
@@ -264,7 +279,7 @@ class OpenAIChatbot(Node):
 
             instructions = '''
                 Where does the user want to be guided to, respond with the name of the location only, 
-                if unclear respond with unknown
+                if unclear respond with 'unknown'. If they no longer want to be guided around respond with 'quit'.
             ''' 
             generated_response = self.generate_response(query, self.guidebot_personality + instructions)
             self.goal_location = generated_response
